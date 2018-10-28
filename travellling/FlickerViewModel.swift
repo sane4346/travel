@@ -2,7 +2,7 @@
 //  FlickerViewModel.swift
 //  travellling
 //
-//  Created by Santosh chaurasia on 26/10/18.
+//  Created by Santosh chaurasia on 27/10/18.
 //  Copyright © 2018 Santosh chaurasia. All rights reserved.
 //
 
@@ -13,61 +13,45 @@ struct cellModel {
     let image : UIImage?
 }
 
-class FlickerViewModel {
+class FlickerViewModel  {
     var photosCount : Int = 0
-    var imagesData : [flickerPhotoData]?
-    var images : [UIImage]?
+    var photosData = [flickerPhotoData]()
+    
     init() {
-        self.photosCount = 100
+        //self.photosCount = 0
     }
-    func getResultsCount() -> Int
+    func setItemCount (items:Int)
     {
-        return photosCount
+         self.photosCount = items
     }
     func getJSONForImagesData(searchtext:String, complete:@escaping (Bool)->Void)
     {
-        if searchtext.count == 0 {
-        }
-        NetworkManager.shared.sendRequestForImagesData(searchText: searchtext, complete: { photo,status in
-            if status == "ok" {
-                let data = photo as? [[String:Any]]
-                for imageData in data!  {
-                        let id = imageData["id"] as? String
-                        let secret = imageData["secret"] as? String
-                    let farm = imageData["farm"] as! Int
-                        let server = imageData["server"] as? String
-                        let photomodel = flickerPhotoData (id:id,secret:secret,farm:farm,server:server)
-                        self.imagesData?.append(photomodel)
-                }
-             complete(true)
+        NetworkManager.shared.sendRequestForImagesData(searchText: searchtext, complete: { photo in
+            guard let photoData = photo as? [[String:Any]] else {
+                complete(false)
+                return
             }
-            complete(false)
+            var pData = [flickerPhotoData]()
+            for imageData in photoData  {
+                let id = imageData["id"] as? String
+                let secret = imageData["secret"] as? String
+                let farm = imageData["farm"] as! Int
+                let server = imageData["server"] as? String
+                let photomodel = flickerPhotoData (id:id,secret:secret,farm:farm,server:server)
+                pData.append(photomodel)
+            }
+            self.photosData = pData
+            self.setItemCount(items: self.photosData.count)
+            complete(true)
         })
     }
-    func fetchImagesFromServer() {
-        for imagedata in self.imagesData! {
-                let id = imagedata.id
-                let farm = imagedata.farm
-                let secret = imagedata.secret
-                let server = imagedata.server
-            let urlString = flickerApi.getFLickerImagePathFor(farm: farm, server: server!, id: id!, secret: secret!).path
-                let url = URL(string: urlString)
-                URLSession.shared.dataTask(with: url!, completionHandler :{ [weak self] (data , response ,error) in
-                    // let response = response as? HTTPURLResponse, response.status = 200
-                    guard let data = data else {
-                        return
-                    }
-                    let image = UIImage(data: data)
-                    self?.images?.append(image!)
-                }).resume()
-        }
-    }
     
-    func imageAt(indexPath:IndexPath) -> UIImage?
+    func photoDataAt(indexPath:IndexPath) -> flickerPhotoData?
     {
-        if let image = images?[indexPath.row] {
-            return image
+        if indexPath.row >= 0 && indexPath.row < photosCount {
+            return photosData[indexPath.row]
         }
         return nil
+        
     }
 }

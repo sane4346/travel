@@ -9,61 +9,81 @@
 import UIKit
 
 class ViewController: UIViewController {
-    @IBOutlet weak var searchBar: UISearchBar!
-    @IBOutlet weak var flickerCollectionView: UICollectionView!
     
-    var viewModel = FlickerViewModel() {
-        didSet {
-                flickerCollectionView.reloadData()
-        }
-    }
+    @IBOutlet weak var flickerCollectionView: UICollectionView!
+    @IBOutlet weak var searchTextField : UITextField!
+    @IBOutlet weak var noResultLabel: UILabel!
+    var oldText :String? = ""
+    var viewModel : FlickerViewModel?
+    //    {
+    //        didSet {
+    //                flickerCollectionView.reloadData()
+    //        }
+    //    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        DispatchQueue.main.async {
-            self.viewModel.getJSONForImagesData(searchtext: "kittens", complete: { [weak self] status in
-                if status {
-                    self?.viewModel.fetchImagesFromServer()
-                }
-            })
-            
-        }
+        viewModel = FlickerViewModel()
+        loadDataForCollectionView(text: "kittens")
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(false)
         
     }
-
-}
-
-extension ViewController : UISearchBarDelegate {
-    private func searchBar(searchBar: UISearchBar, textDidChange searchText: String) {
-        let activityIndicator = UIActivityIndicatorView(activityIndicatorStyle: .gray)
-        flickerCollectionView.addSubview(activityIndicator)
-        activityIndicator.frame = flickerCollectionView.bounds
-        activityIndicator.startAnimating()
-        
-        viewModel.getJSONForImagesData(searchtext: searchText, complete: { [weak self] status in
-            if status {
-                self?.viewModel.fetchImagesFromServer()
-                self?.flickerCollectionView.reloadData()
-            }
-            activityIndicator.removeFromSuperview()
-            searchBar.resignFirstResponder()
-        })
+    
+    @IBAction func doneBtnClicked(_ sender: Any) {
+        self.loadDataForCollectionView(text: searchTextField.text)
         
     }
     
-    private func searchBarSearchButtonClicked(searchBar: UISearchBar) {
+    func loadDataForCollectionView(text: String?) {
+        noResultLabel.isHidden = true
+        if let searchText = text , oldText != searchText {
+            oldText = searchText
+            viewModel?.setItemCount(items: 0)
+            DispatchQueue.main.async {
+                self.flickerCollectionView.reloadData()
+            }
+            let activityIndicator = UIActivityIndicatorView(activityIndicatorStyle: .gray)
+            flickerCollectionView.addSubview(activityIndicator)
+            activityIndicator.frame = flickerCollectionView.bounds
+            activityIndicator.startAnimating()
+            self.viewModel?.getJSONForImagesData(searchtext: searchText, complete: { [weak self] status in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0 , execute: {
+                    activityIndicator.stopAnimating()
+                    activityIndicator.removeFromSuperview()
+                    
+                    if self?.viewModel?.photosCount == 0 {
+                        self?.noResultLabel.isHidden = false
+                    }
+                    else {
+                        self?.flickerCollectionView.reloadData()
+                    }
+                    
+                })
+            })
+        }
     }
 }
+
+extension ViewController : UITextFieldDelegate{
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        self.loadDataForCollectionView(text: searchTextField.text)
+        textField.resignFirstResponder()
+        textField.text = searchTextField.text
+        return true
+    }
+    
+}
+
 
 extension ViewController : UICollectionViewDelegate , UICollectionViewDataSource {
     
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return viewModel.getResultsCount()
+        return viewModel?.photosCount ?? 10
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
@@ -74,9 +94,9 @@ extension ViewController : UICollectionViewDelegate , UICollectionViewDataSource
         
         cell.backgroundColor=UIColor.white
         
-        if let image  = viewModel.imageAt(indexPath: indexPath)
+        if let photo  = viewModel?.photoDataAt(indexPath: indexPath)
         {
-            cell.flickerCellImage.image = image
+            cell.configure(photoData:photo)
         }
         else {
             cell.flickerCellImage.image = UIImage(named: "uber")
