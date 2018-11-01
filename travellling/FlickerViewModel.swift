@@ -31,16 +31,14 @@ class FlickerViewModel  {
                 complete(false)
                 return
             }
-            var pData = [flickerPhotoData]()
             for imageData in photoData  {
                 let id = imageData["id"] as? String
                 let secret = imageData["secret"] as? String
                 let farm = imageData["farm"] as! Int
                 let server = imageData["server"] as? String
                 let photomodel = flickerPhotoData (id:id,secret:secret,farm:farm,server:server)
-                pData.append(photomodel)
+                self.photosData.append(photomodel)
             }
-            self.photosData = pData
             self.setItemCount(items: self.photosData.count)
             complete(true)
         })

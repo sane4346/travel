@@ -25,45 +25,47 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         viewModel = FlickerViewModel()
-        loadDataForCollectionView(text: "kittens")
+        //loadDataForCollectionView(text: "kittens")
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(false)
         
     }
-    
-    @IBAction func doneBtnClicked(_ sender: Any) {
-        self.loadDataForCollectionView(text: searchTextField.text)
-        
-    }
-    
+
     func loadDataForCollectionView(text: String?) {
         noResultLabel.isHidden = true
-        if let searchText = text , oldText != searchText {
+        if let searchText = text , oldText != searchText , searchText.count > 0 {
+            viewModel?.photosData.removeAll()
             oldText = searchText
             viewModel?.setItemCount(items: 0)
-            DispatchQueue.main.async {
-                self.flickerCollectionView.reloadData()
-            }
+            self.flickerCollectionView.reloadData()
             let activityIndicator = UIActivityIndicatorView(activityIndicatorStyle: .gray)
             flickerCollectionView.addSubview(activityIndicator)
             activityIndicator.frame = flickerCollectionView.bounds
             activityIndicator.startAnimating()
+            
             self.viewModel?.getJSONForImagesData(searchtext: searchText, complete: { [weak self] status in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 9.0 , execute: {
-                    activityIndicator.stopAnimating()
-                    activityIndicator.removeFromSuperview()
-                    
+                activityIndicator.stopAnimating()
+                activityIndicator.removeFromSuperview()
+                if status {
                     if self?.viewModel?.photosCount == 0 {
                         self?.noResultLabel.isHidden = false
                     }
                     else {
-                        self?.flickerCollectionView.reloadData()
+                        DispatchQueue.main.async {
+                            self?.flickerCollectionView.reloadData()
+                        }  
                     }
+                }
+                else {
+                    let alert = UIAlertController(title: "Network Error", message: "Server error occured", preferredStyle: .alert)
+                    let action = UIAlertAction(title: "OK", style: .cancel, handler: nil)
+                    alert.addAction(action)
+                    alert.show(self!, sender: nil)
+                }
                     
                 })
-            })
-        }
+            }
     }
 }
 
@@ -71,8 +73,8 @@ extension ViewController : UITextFieldDelegate{
     
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         self.loadDataForCollectionView(text: searchTextField.text)
-        textField.resignFirstResponder()
         textField.text = searchTextField.text
+        textField.resignFirstResponder()
         return true
     }
     

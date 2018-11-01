@@ -24,17 +24,19 @@ class NetworkManager: NSObject {
         
         let urlRequest = self.path + searchText
         guard let url = URL(string: urlRequest) else {
+            complete(nil)
             return
         }
         URLSession.shared.dataTask(with: url, completionHandler :{ (data , response ,error) in
-            if let error = error {
-                complete(error)
+            if let _ = error {
+                complete(nil)
             }
             guard let data = data,
                 let jsonData = try? JSONSerialization.jsonObject(with: data, options:[]) as! NSDictionary,
                 let status = jsonData.value(forKey: "stat") as? String ,
                 let photos = jsonData.value(forKey: "photos") as? NSDictionary,
                 let photo = photos.value(forKey: "photo") else {
+                    complete(nil)
                     return
             }
             if( status == "ok") {
