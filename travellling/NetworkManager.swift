@@ -22,7 +22,8 @@ class NetworkManager: NSObject {
     
     func sendRequestForImagesData(searchText:String, complete: @escaping (Any?)->(Void)){
         
-        let urlRequest = self.path + searchText
+        let urlRequest = self.path + searchText.replacingOccurrences(of: " ", with: "%20")
+        
         guard let url = URL(string: urlRequest) else {
             complete(nil)
             return

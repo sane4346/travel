@@ -13,70 +13,72 @@ class ViewController: UIViewController {
     @IBOutlet weak var flickerCollectionView: UICollectionView!
     @IBOutlet weak var searchTextField : UITextField!
     @IBOutlet weak var noResultLabel: UILabel!
-    var oldText :String? = ""
+ 
     var viewModel : FlickerViewModel?
-    //    {
-    //        didSet {
-    //                flickerCollectionView.reloadData()
-    //        }
-    //    }
+        {
+            didSet {
+                if viewModel != nil {
+                    self.flickerCollectionView.reloadData()
+                }
+            }
+        }
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         viewModel = FlickerViewModel()
+        noResultLabel.bringSubview(toFront: self.view)
         //loadDataForCollectionView(text: "kittens")
     }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(false)
         
     }
-
+    
     func loadDataForCollectionView(text: String?) {
+        //imageCache.removeAllObjects()
         noResultLabel.isHidden = true
-        if let searchText = text , oldText != searchText , searchText.count > 0 {
+        if let searchText = text , searchText.count > 0 {
             viewModel?.photosData.removeAll()
-            oldText = searchText
             viewModel?.setItemCount(items: 0)
             self.flickerCollectionView.reloadData()
             let activityIndicator = UIActivityIndicatorView(activityIndicatorStyle: .gray)
             flickerCollectionView.addSubview(activityIndicator)
             activityIndicator.frame = flickerCollectionView.bounds
             activityIndicator.startAnimating()
-            
-            self.viewModel?.getJSONForImagesData(searchtext: searchText, complete: { [weak self] status in
-                activityIndicator.stopAnimating()
-                activityIndicator.removeFromSuperview()
-                if status {
-                    if self?.viewModel?.photosCount == 0 {
-                        self?.noResultLabel.isHidden = false
+            DispatchQueue.global(qos: .background).async {
+                self.viewModel?.getJSONForImagesData(searchtext: searchText, complete: { [weak self] status in
+                    DispatchQueue.main.async {
+                        activityIndicator.stopAnimating()
+                        activityIndicator.removeFromSuperview()
+                        if status {
+                            self?.viewModel?.photosCount == 0 ? self?.noResultLabel.isHidden = false : self?.flickerCollectionView.reloadData()
+                        }
+                        else {
+                            let alert = UIAlertController(title: "Error", message: "Network or server error occured", preferredStyle: UIAlertController.Style.alert)
+                            alert.addAction(UIAlertAction(title: "Ok", style: UIAlertActionStyle.default, handler: nil))
+                            self?.present(alert, animated: false, completion: nil)
+                        }
                     }
-                    else {
-                        DispatchQueue.main.async {
-                            self?.flickerCollectionView.reloadData()
-                        }  
-                    }
-                }
-                else {
-                    let alert = UIAlertController(title: "Network Error", message: "Server error occured", preferredStyle: .alert)
-                    let action = UIAlertAction(title: "OK", style: .cancel, handler: nil)
-                    alert.addAction(action)
-                    alert.show(self!, sender: nil)
-                }
-                    
                 })
             }
+        }
     }
 }
 
 extension ViewController : UITextFieldDelegate{
     
+    func textFieldShouldClear(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
+    }
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         self.loadDataForCollectionView(text: searchTextField.text)
         textField.text = searchTextField.text
         textField.resignFirstResponder()
         return true
     }
+    
     
 }
 
@@ -85,7 +87,7 @@ extension ViewController : UICollectionViewDelegate , UICollectionViewDataSource
     
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return viewModel?.photosCount ?? 10
+        return viewModel?.photosCount ?? 0
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
